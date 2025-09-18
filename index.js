@@ -76,11 +76,13 @@ async function run() {
             const users = await usersCollection.find().toArray();
             res.send(users);
         });
-        app.get("/users", verifyFBToken, async (req, res) => {
-            const users = await usersCollection.find().toArray();
-            res.send(users);
-        });
+      
 
+        app.patch("/users/admin/:id", async (req, res) => {
+            const id = req.params.id;
+            const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { role: "admin" } });
+            res.send(result);
+        });
         app.patch("/users/admin/:id", async (req, res) => {
             const id = req.params.id;
             const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { role: "admin" } });
