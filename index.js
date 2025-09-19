@@ -36,7 +36,10 @@ async function run() {
         const db = client.db("realEstateDb");
         const propertiesCollection = db.collection('properties');
         const usersCollection = db.collection('users');
-       
+        const wishlistCollection = db.collection('wishlist');
+        const reviewsCollection = db.collection('reviews');
+
+
 
         // ============ MIDDLEWARES ============
         const verifyFBToken = async (req, res, next) => {
@@ -70,24 +73,20 @@ async function run() {
             if (!user) return res.status(404).send({ message: "User not found" });
             res.send({ role: user.role || "user" });
         });
-     
+
 
         app.get("/users", verifyFBToken, async (req, res) => {
             const users = await usersCollection.find().toArray();
             res.send(users);
         });
-      
+
 
         app.patch("/users/admin/:id", async (req, res) => {
             const id = req.params.id;
             const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { role: "admin" } });
             res.send(result);
         });
-        app.patch("/users/admin/:id", async (req, res) => {
-            const id = req.params.id;
-            const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { role: "admin" } });
-            res.send(result);
-        });
+
 
         app.patch("/users/agent/:id", async (req, res) => {
             const id = req.params.id;
@@ -124,8 +123,8 @@ async function run() {
         });
 
         // ============ PROPERTY ROUTES ============
-        
-        app.post("/properties", async (req, res) => {
+
+        app.post("/properties", verifyFBToken, async (req, res) => {
             const property = req.body;
             if (!property || Object.keys(property).length === 0) return res.status(400).send({ message: "Property data is required" });
 
@@ -139,15 +138,25 @@ async function run() {
             res.send(result);
         });
 
-        // Get all properties or user-specific
-        app.get("/properties", verifyFBToken, async (req, res) => {
+
+
+        // ✅ Get only verified properties (for AllProperties page)
+        app.get("/properties", async (req, res) => {
             try {
                 const { email } = req.query;
-                const query = email ? { agentEmail: email } : {};
+                let query = { status: "verified" }; // ✅ Only fetch verified properties
+
+                if (email) {
+                    query.agentEmail = email; // ✅ Get verified properties of specific agent
+                }
+
                 const properties = await propertiesCollection.find(query).toArray();
                 res.send(properties);
             } catch (err) {
-                res.status(500).send({ message: "Internal Server Error", error: err.message });
+                res.status(500).send({
+                    message: "Internal Server Error",
+                    error: err.message
+                });
             }
         });
 
@@ -186,6 +195,128 @@ async function run() {
         });
 
 
+        // wishlist and reviews route
+
+
+        // Get property details with reviews
+        app.get('/properties/:id', async (req, res) => {
+            try {
+                const { id } = req.params;
+                const property = await propertiesCollection.findOne({ _id: new ObjectId(id) });
+                if (!property) return res.status(404).json({ message: 'Property not found' });
+                res.json(property);
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: 'Server error' });
+            }
+        });
+
+        // Add property to wishlist
+        // app.post('/wishlist', async (req, res) => {
+        //     try {
+        //         const { userId, propertyId } = req.body;
+        //         if (!userId || !propertyId) return res.status(400).json({ message: 'Missing userId or propertyId' });
+
+        //         // Check if already in wishlist
+        //         const exists = await wishlistCollection.findOne({ userId, propertyId });
+        //         if (exists) return res.status(400).json({ message: 'Property already in wishlist' });
+
+        //         const result = await wishlistCollection.insertOne({ userId, propertyId });
+        //         res.json(result);
+        //     } catch (err) {
+        //         console.error(err);
+        //         res.status(500).json({ message: 'Server error' });
+        //     }
+        // });
+
+
+        app.post('/wishlist', async (req, res) => {
+            try {
+                const { userEmail, propertyId } = req.body;
+                if (!userEmail || !propertyId) return res.status(400).json({ message: 'Missing userEmail or propertyId' });
+
+                // Check if already in wishlist
+                const exists = await wishlistCollection.findOne({ userEmail, propertyId });
+                if (exists) return res.status(400).json({ message: 'Property already in wishlist' });
+
+                const result = await wishlistCollection.insertOne({ userEmail, propertyId });
+                res.json(result);
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: 'Server error' });
+            }
+        });
+
+
+
+        // ✅ Get all wishlist properties for a specific user
+        app.get('/wishlist/:email', async (req, res) => {
+            try {
+                const { email } = req.params;
+                if (!email) return res.status(400).json({ message: 'Missing user email' });
+
+                // Find wishlist items
+                const wishlistItems = await wishlistCollection.find({ userEmail: email }).toArray();
+
+                if (wishlistItems.length === 0) {
+                    return res.json([]); // empty wishlist
+                }
+
+                // Get propertyIds from wishlist
+                const propertyIds = wishlistItems.map(item => new ObjectId(item.propertyId));
+
+                // Find all properties in that wishlist
+                const properties = await propertiesCollection.find({ _id: { $in: propertyIds } }).toArray();
+
+                res.json(properties);
+            } catch (err) {
+                console.error("Wishlist fetch error:", err);
+                res.status(500).json({ message: 'Server error' });
+            }
+        });
+
+        // ✅ Remove property from wishlist
+        app.delete('/wishlist/:email/:propertyId', async (req, res) => {
+            try {
+                const { email, propertyId } = req.params;
+                const result = await wishlistCollection.deleteOne({ userEmail: email, propertyId });
+                if (result.deletedCount === 0) {
+                    return res.status(404).json({ message: 'Wishlist item not found' });
+                }
+                res.json({ message: 'Removed from wishlist' });
+            } catch (err) {
+                console.error("Wishlist delete error:", err);
+                res.status(500).json({ message: 'Server error' });
+            }
+        });
+
+
+        // Add a review for a property
+        app.post('/properties/:id/reviews', async (req, res) => {
+            try {
+                const { id } = req.params;
+                const { userId, name, text } = req.body;
+
+                if (!userId || !name || !text) return res.status(400).json({ message: 'Missing fields' });
+
+                const newReview = { userId, name, text };
+                const result = await propertiesCollection.findOneAndUpdate(
+                    { _id: new ObjectId(id) },
+                    { $push: { reviews: newReview } },
+                    { returnDocument: 'after' }
+                );
+
+                if (!result.value) return res.status(404).json({ message: 'Property not found' });
+
+                res.json(newReview);
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: 'Server error' });
+            }
+        });
+
+
+
 
 
         // Single property by ID
@@ -196,13 +327,21 @@ async function run() {
             res.send(property);
         });
 
+        // advertised properties
+
 
         app.get("/advertised-properties", async (req, res) => {
-            const advertised = await propertiesCollection
-                .find({ isAdvertised: true })
-                .toArray();
-            res.send(advertised);
+            try {
+                const verifiedProperties = await propertiesCollection
+                    .find({ status: "verified" })
+                    .toArray();
+                res.send(verifiedProperties);
+            } catch (error) {
+                console.error("Error fetching verified properties:", error);
+                res.status(500).send({ message: "Failed to fetch verified properties" });
+            }
         });
+
 
         // Ping MongoDB
         await client.db("admin").command({ ping: 1 });
