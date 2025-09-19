@@ -141,25 +141,6 @@ async function run() {
 
 
 
-        // ✅ Get only verified properties (for AllProperties page)
-        // app.get("/properties", async (req, res) => {
-        //     try {
-        //         const { email } = req.query;
-        //         let query = { status: "verified" }; // ✅ Only fetch verified properties
-
-        //         if (email) {
-        //             query.agentEmail = email; // ✅ Get verified properties of specific agent
-        //         }
-
-        //         const properties = await propertiesCollection.find(query).toArray();
-        //         res.send(properties);
-        //     } catch (err) {
-        //         res.status(500).send({
-        //             message: "Internal Server Error",
-        //             error: err.message
-        //         });
-        //     }
-        // });
 
 
 
@@ -313,6 +294,183 @@ async function run() {
                 res.status(500).json({ message: 'Server error' });
             }
         });
+
+
+
+        // reviews  
+
+        // Get all reviews by a user
+        // Get all reviews by a specific user
+
+
+
+
+
+        // Add a review for a property
+        // app.post("/reviews/:propertyId", async (req, res) => {
+        //     try {
+        //         const { propertyId } = req.params;
+        //         const { userId, name, text } = req.body;
+
+        //         // Validate input
+        //         if (!userId || !name || !text) {
+        //             return res.status(400).json({ message: "Missing required fields" });
+        //         }
+
+        //         const newReview = {
+        //             userId,
+        //             name,
+        //             text,
+        //             createdAt: new Date(),
+        //         };
+
+        //         // Add the review to the property's reviews array
+        //         const result = await propertiesCollection.updateOne(
+        //             { _id: new ObjectId(propertyId) },
+        //             { $push: { reviews: newReview } }
+        //         );
+
+        //         if (result.modifiedCount === 0) {
+        //             return res.status(404).json({ message: "Property not found" });
+        //         }
+
+        //         res.json({ message: "Review added successfully", review: newReview });
+        //     } catch (err) {
+        //         console.error(err);
+        //         res.status(500).json({ message: "Server error" });
+        //     }
+        // });
+
+        // app.get("/reviews/:userEmail", async (req, res) => {
+        //     try {
+        //         const { userEmail } = req.params;
+
+        //         // Find all properties that have reviews from this user
+        //         const properties = await propertiesCollection.find({ "reviews.userId": userEmail }).toArray();
+
+        //         // Extract user's reviews and attach property info
+        //         const userReviews = [];
+        //         properties.forEach((property) => {
+        //             property.reviews.forEach((review) => {
+        //                 if (review.userId === userEmail) {
+        //                     userReviews.push({
+        //                         reviewId: review.userId, // can also generate unique ID for review if needed
+        //                         propertyId: property._id,
+        //                         propertyTitle: property.title,
+        //                         agentName: property.agentName,
+        //                         reviewTime: review.createdAt || review.time || null,
+        //                         reviewDescription: review.text,
+        //                     });
+        //                 }
+        //             });
+        //         });
+
+        //         res.json(userReviews);
+        //     } catch (err) {
+        //         console.error(err);
+        //         res.status(500).json({ message: "Server error" });
+        //     }
+        // });
+
+        // // Delete a review by reviewId and propertyId
+        // // Delete a review by propertyId and reviewId
+        // app.delete("/reviews/:propertyId/:reviewId", async (req, res) => {
+        //     try {
+        //         const { propertyId, reviewId } = req.params;
+
+        //         const result = await propertiesCollection.updateOne(
+        //             { _id: new ObjectId(propertyId) },
+        //             { $pull: { reviews: { reviewId: reviewId } } } // match by unique reviewId
+        //         );
+
+        //         if (result.modifiedCount === 0) {
+        //             return res.status(404).json({ message: "Review not found" });
+        //         }
+
+        //         res.json({ message: "Review deleted successfully" });
+        //     } catch (err) {
+        //         console.error(err);
+        //         res.status(500).json({ message: "Server error" });
+        //     }
+        // });
+
+        // 1️⃣ Add a new review
+        // 1️⃣ Add a new review
+        app.post("/reviews/:propertyId", async (req, res) => {
+            try {
+                const { propertyId } = req.params;
+                const { userId, name, text } = req.body;
+
+                if (!userId || !name || !text) {
+                    return res.status(400).json({ message: "Missing required fields" });
+                }
+
+                const newReview = {
+                    reviewId: new ObjectId().toString(), // ✅ unique ID
+                    propertyId,
+                    userId,
+                    name,
+                    text,
+                    createdAt: new Date(),
+                };
+
+                const result = await reviewsCollection.insertOne(newReview);
+
+                res.json({ message: "Review added successfully", review: newReview });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: "Server error" });
+            }
+        });
+
+
+
+        // Get all reviews
+        app.get("/reviews", async (req, res) => {
+            try {
+                const allReviews = await reviewsCollection.find().toArray();
+                res.json(allReviews);
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: "Server error" });
+            }
+        });
+
+
+        // 2️⃣ Get all reviews of a user
+        app.get("/reviews/:userEmail", async (req, res) => {
+            try {
+                const { userEmail } = req.params;
+
+                const userReviews = await reviewsCollection
+                    .find({ userId: userEmail })
+                    .toArray();
+
+                res.json(userReviews);
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: "Server error" });
+            }
+        });
+
+        // 3️⃣ Delete a review
+        app.delete("/reviews/:reviewId", async (req, res) => {
+            try {
+                const { reviewId } = req.params;
+
+                const result = await reviewsCollection.deleteOne({ reviewId });
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).json({ message: "Review not found" });
+                }
+
+                res.json({ message: "Review deleted successfully" });
+            } catch (err) {
+                console.error(err);
+                res.status(500).json({ message: "Server error" });
+            }
+        });
+
 
 
 
