@@ -37,6 +37,7 @@ async function run() {
         const propertiesCollection = db.collection('properties');
         const usersCollection = db.collection('users');
         const wishlistCollection = db.collection('wishlist');
+        const offersCollection = db.collection('offers');
         const reviewsCollection = db.collection('reviews');
 
 
@@ -289,6 +290,97 @@ async function run() {
                 res.status(500).json({ message: 'Server error' });
             }
         });
+
+
+
+        // offeers 
+
+        // Make an offer
+        app.post('/offers', async (req, res) => {
+            try {
+                const { propertyId, title, location, agentName, offerAmount, buyerEmail, buyerName, buyingDate, minPrice, maxPrice, role } = req.body;
+
+                // ✅ Validation
+
+
+                if (!propertyId || !title || !location || !agentName || !offerAmount || !buyerEmail || !buyerName || !buyingDate) {
+                    return res.status(400).json({ message: 'Missing required fields' });
+                }
+
+                if (offerAmount < minPrice || offerAmount > maxPrice) {
+                    return res.status(400).json({ message: `Offer must be between ${minPrice} and ${maxPrice}` });
+                }
+
+                const newOffer = {
+                    propertyId,
+                    title,
+                    location,
+                    agentName,
+                    offerAmount,
+                    buyerEmail,
+                    buyerName,
+                    buyingDate,
+                    status: 'pending',
+                    createdAt: new Date(),
+                };
+
+                const result = await offersCollection.insertOne(newOffer);
+
+                res.json({ message: 'Offer submitted successfully', offer: newOffer });
+            } catch (err) {
+                console.error("Offer error:", err);
+                res.status(500).json({ message: 'Server error' });
+            }
+        });
+
+
+        // GET bought properties for a specific user
+        app.get("/offers", verifyFBToken, async (req, res) => {
+            try {
+                const buyerEmail = req.query.buyerEmail;
+                if (!buyerEmail) {
+                    return res.status(400).json({ message: "buyerEmail query parameter required" });
+                }
+
+                const db = getDb();
+                const offers = await db
+                    .collection("offers")
+                    .find({ buyerEmail })
+                    .sort({ createdAt: -1 })
+                    .toArray();
+
+                res.status(200).json(offers);
+            } catch (error) {
+                console.error(error);
+                res.status(500).json({ message: "Failed to fetch bought properties" });
+            }
+        });
+
+
+        // Get single property by ID
+        app.get("/properties/:id", async (req, res) => {
+            try {
+                const { id } = req.params;
+
+                // validate ObjectId
+                if (!ObjectId.isValid(id)) {
+                    return res.status(400).json({ message: "Invalid property ID" });
+                }
+
+                const property = await propertiesCollection.findOne({ _id: new ObjectId(id) });
+
+                if (!property) {
+                    return res.status(404).json({ message: "Property not found" });
+                }
+
+                res.json(property); // ✅ return property object
+            } catch (err) {
+                console.error("Error fetching property:", err);
+                res.status(500).json({ message: "Server error" });
+            }
+        });
+
+
 
 
         // Add a review for a property
