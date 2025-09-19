@@ -142,13 +142,38 @@ async function run() {
 
 
         // ✅ Get only verified properties (for AllProperties page)
+        // app.get("/properties", async (req, res) => {
+        //     try {
+        //         const { email } = req.query;
+        //         let query = { status: "verified" }; // ✅ Only fetch verified properties
+
+        //         if (email) {
+        //             query.agentEmail = email; // ✅ Get verified properties of specific agent
+        //         }
+
+        //         const properties = await propertiesCollection.find(query).toArray();
+        //         res.send(properties);
+        //     } catch (err) {
+        //         res.status(500).send({
+        //             message: "Internal Server Error",
+        //             error: err.message
+        //         });
+        //     }
+        // });
+
+
+
         app.get("/properties", async (req, res) => {
             try {
                 const { email } = req.query;
-                let query = { status: "verified" }; // ✅ Only fetch verified properties
+                let query = {};
 
                 if (email) {
-                    query.agentEmail = email; // ✅ Get verified properties of specific agent
+                    // Show ALL properties for that agent
+                    query.agentEmail = email;
+                } else {
+                    // Show only verified for public
+                    query.status = "verified";
                 }
 
                 const properties = await propertiesCollection.find(query).toArray();
@@ -160,6 +185,20 @@ async function run() {
                 });
             }
         });
+
+        // ✅ Admin: Get ALL properties (any status)
+        app.get("/admin/properties", async (req, res) => {
+            try {
+                const properties = await propertiesCollection.find().sort({ createdAt: -1 }).toArray();
+                res.send(properties);
+            } catch (err) {
+                res.status(500).send({
+                    message: "Internal Server Error",
+                    error: err.message,
+                });
+            }
+        });
+
 
         // Update property status
         app.patch("/properties/:id/status", async (req, res) => {
@@ -212,23 +251,7 @@ async function run() {
             }
         });
 
-        // Add property to wishlist
-        // app.post('/wishlist', async (req, res) => {
-        //     try {
-        //         const { userId, propertyId } = req.body;
-        //         if (!userId || !propertyId) return res.status(400).json({ message: 'Missing userId or propertyId' });
 
-        //         // Check if already in wishlist
-        //         const exists = await wishlistCollection.findOne({ userId, propertyId });
-        //         if (exists) return res.status(400).json({ message: 'Property already in wishlist' });
-
-        //         const result = await wishlistCollection.insertOne({ userId, propertyId });
-        //         res.json(result);
-        //     } catch (err) {
-        //         console.error(err);
-        //         res.status(500).json({ message: 'Server error' });
-        //     }
-        // });
 
 
         app.post('/wishlist', async (req, res) => {
@@ -301,8 +324,6 @@ async function run() {
                 const { propertyId, title, location, agentName, offerAmount, buyerEmail, buyerName, buyingDate, minPrice, maxPrice, role } = req.body;
 
                 // ✅ Validation
-
-
                 if (!propertyId || !title || !location || !agentName || !offerAmount || !buyerEmail || !buyerName || !buyingDate) {
                     return res.status(400).json({ message: 'Missing required fields' });
                 }
@@ -311,11 +332,16 @@ async function run() {
                     return res.status(400).json({ message: `Offer must be between ${minPrice} and ${maxPrice}` });
                 }
 
+                // Fetch property from DB
+                const property = await propertiesCollection.findOne({ _id: new ObjectId(propertyId) });
+                if (!property) return res.status(404).json({ message: "Property not found" });
+
                 const newOffer = {
                     propertyId,
                     title,
                     location,
                     agentName,
+                    agentEmail: property.agentEmail, // now defined
                     offerAmount,
                     buyerEmail,
                     buyerName,
@@ -334,7 +360,10 @@ async function run() {
         });
 
 
-        // GET bought properties for a specific user
+
+
+
+
         app.get("/offers", verifyFBToken, async (req, res) => {
             try {
                 const buyerEmail = req.query.buyerEmail;
@@ -342,19 +371,100 @@ async function run() {
                     return res.status(400).json({ message: "buyerEmail query parameter required" });
                 }
 
-                const db = getDb();
-                const offers = await db
-                    .collection("offers")
-                    .find({ buyerEmail })
-                    .sort({ createdAt: -1 })
-                    .toArray();
+                const offers = await offersCollection.find({ buyerEmail }).sort({ createdAt: -1 }).toArray();
 
-                res.status(200).json(offers);
+                // fetch property images
+                const propertyIds = offers.map(o => new ObjectId(o.propertyId));
+                const properties = await propertiesCollection.find({ _id: { $in: propertyIds } }).toArray();
+
+                // merge offers with property images
+                const merged = offers.map(o => {
+                    const prop = properties.find(p => p._id.toString() === o.propertyId);
+                    return {
+                        ...o,
+                        image: prop?.image || null,
+                    };
+                });
+
+                res.status(200).json(merged);
             } catch (error) {
                 console.error(error);
                 res.status(500).json({ message: "Failed to fetch bought properties" });
             }
         });
+
+
+        // PATCH /offers/:id/accept
+        app.patch("/offers/:id/accept", async (req, res) => {
+            const { id } = req.params;
+
+            const result = await offersCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { status: "accepted" } }
+            );
+
+            res.send(result);
+        });
+
+
+        // Get all offers for properties added by an agent
+        app.get("/offers/agent/:email", verifyFBToken, async (req, res) => {
+            try {
+                const agentEmail = req.params.email;
+
+                // find all offers where this agent is the property owner
+                const offers = await offersCollection
+                    .find({ agentEmail: agentEmail }) // ensure you store agentEmail in offers when creating
+                    .sort({ createdAt: -1 })
+                    .toArray();
+
+                res.status(200).json(offers);
+            } catch (error) {
+                console.error("Error fetching agent offers:", error);
+                res.status(500).json({ message: "Failed to fetch offers" });
+            }
+        });
+
+
+
+
+        // PATCH accept offer
+        app.patch("/offers/:id/accept", async (req, res) => {
+            const { id } = req.params;
+
+            // Find the offer being accepted
+            const offer = await offersCollection.findOne({ _id: new ObjectId(id) });
+            if (!offer) return res.status(404).send({ message: "Offer not found" });
+
+            // 1️⃣ Accept selected offer
+            await offersCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { status: "accepted" } }
+            );
+
+            // 2️⃣ Reject all other offers for same property
+            await offersCollection.updateMany(
+                { propertyId: offer.propertyId, _id: { $ne: new ObjectId(id) } },
+                { $set: { status: "rejected" } }
+            );
+
+            res.send({ message: "Offer accepted and others rejected" });
+        });
+
+        // PATCH reject offer
+        app.patch("/offers/:id/reject", async (req, res) => {
+            const { id } = req.params;
+
+            const result = await offersCollection.updateOne(
+                { _id: new ObjectId(id) },
+                { $set: { status: "rejected" } }
+            );
+
+            res.send(result);
+        });
+
+
+
 
 
         // Get single property by ID
@@ -381,8 +491,6 @@ async function run() {
         });
 
 
-
-
         // Add a review for a property
         app.post('/properties/:id/reviews', async (req, res) => {
             try {
@@ -406,6 +514,10 @@ async function run() {
                 res.status(500).json({ message: 'Server error' });
             }
         });
+
+
+
+
 
 
 
