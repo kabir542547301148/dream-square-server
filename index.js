@@ -453,6 +453,47 @@ async function run() {
             }
         });
 
+
+        // ✅ Update review status (approve/reject)
+        app.patch("/reviews/:id/status", async (req, res) => {
+            try {
+                const { id } = req.params;
+                const { status } = req.body; // "approved" or "rejected"
+
+                if (!["approved", "rejected"].includes(status)) {
+                    return res.status(400).send({ message: "Invalid status" });
+                }
+
+                const result = await reviewsCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status } }
+                );
+
+                res.send(result);
+            } catch (err) {
+                res.status(500).send({ message: "Failed to update review status", error: err.message });
+            }
+        });
+
+
+        // ✅ Delete a review
+        app.delete("/reviews/:id", async (req, res) => {
+            try {
+                const { id } = req.params;
+                const result = await reviewsCollection.deleteOne({ _id: new ObjectId(id) });
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ message: "Review not found" });
+                }
+
+                res.send({ message: "Review deleted successfully" });
+            } catch (err) {
+                res.status(500).send({ message: "Failed to delete review", error: err.message });
+            }
+        });
+
+
+
         // 3️⃣ Delete a review
         app.delete("/reviews/:reviewId", async (req, res) => {
             try {
