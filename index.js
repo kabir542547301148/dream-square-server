@@ -5,6 +5,11 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
 
 dotenv.config();
+
+
+// stripe
+
+const stripe = require('stripe')(process.env.PAYMENT_GATEWAY_KEY);
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -714,6 +719,11 @@ async function run() {
             }
         });
 
+    
+
+
+
+
 
 
 
@@ -729,6 +739,10 @@ async function run() {
             if (!property) return res.status(404).send({ message: "Property not found" });
             res.send(property);
         });
+
+
+        // ✅ Get property by ID
+
 
         // advertised properties
 
