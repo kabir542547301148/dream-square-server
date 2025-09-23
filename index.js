@@ -259,6 +259,9 @@ async function run() {
 
 
 
+
+
+
         // ✅ Get all wishlist properties for a specific user
         app.get('/wishlist/:email', async (req, res) => {
             try {
@@ -302,104 +305,7 @@ async function run() {
 
 
 
-        // reviews  
 
-        // Get all reviews by a user
-        // Get all reviews by a specific user
-
-
-
-
-
-        // Add a review for a property
-        // app.post("/reviews/:propertyId", async (req, res) => {
-        //     try {
-        //         const { propertyId } = req.params;
-        //         const { userId, name, text } = req.body;
-
-        //         // Validate input
-        //         if (!userId || !name || !text) {
-        //             return res.status(400).json({ message: "Missing required fields" });
-        //         }
-
-        //         const newReview = {
-        //             userId,
-        //             name,
-        //             text,
-        //             createdAt: new Date(),
-        //         };
-
-        //         // Add the review to the property's reviews array
-        //         const result = await propertiesCollection.updateOne(
-        //             { _id: new ObjectId(propertyId) },
-        //             { $push: { reviews: newReview } }
-        //         );
-
-        //         if (result.modifiedCount === 0) {
-        //             return res.status(404).json({ message: "Property not found" });
-        //         }
-
-        //         res.json({ message: "Review added successfully", review: newReview });
-        //     } catch (err) {
-        //         console.error(err);
-        //         res.status(500).json({ message: "Server error" });
-        //     }
-        // });
-
-        // app.get("/reviews/:userEmail", async (req, res) => {
-        //     try {
-        //         const { userEmail } = req.params;
-
-        //         // Find all properties that have reviews from this user
-        //         const properties = await propertiesCollection.find({ "reviews.userId": userEmail }).toArray();
-
-        //         // Extract user's reviews and attach property info
-        //         const userReviews = [];
-        //         properties.forEach((property) => {
-        //             property.reviews.forEach((review) => {
-        //                 if (review.userId === userEmail) {
-        //                     userReviews.push({
-        //                         reviewId: review.userId, // can also generate unique ID for review if needed
-        //                         propertyId: property._id,
-        //                         propertyTitle: property.title,
-        //                         agentName: property.agentName,
-        //                         reviewTime: review.createdAt || review.time || null,
-        //                         reviewDescription: review.text,
-        //                     });
-        //                 }
-        //             });
-        //         });
-
-        //         res.json(userReviews);
-        //     } catch (err) {
-        //         console.error(err);
-        //         res.status(500).json({ message: "Server error" });
-        //     }
-        // });
-
-        // // Delete a review by reviewId and propertyId
-        // // Delete a review by propertyId and reviewId
-        // app.delete("/reviews/:propertyId/:reviewId", async (req, res) => {
-        //     try {
-        //         const { propertyId, reviewId } = req.params;
-
-        //         const result = await propertiesCollection.updateOne(
-        //             { _id: new ObjectId(propertyId) },
-        //             { $pull: { reviews: { reviewId: reviewId } } } // match by unique reviewId
-        //         );
-
-        //         if (result.modifiedCount === 0) {
-        //             return res.status(404).json({ message: "Review not found" });
-        //         }
-
-        //         res.json({ message: "Review deleted successfully" });
-        //     } catch (err) {
-        //         console.error(err);
-        //         res.status(500).json({ message: "Server error" });
-        //     }
-        // });
-
-        // 1️⃣ Add a new review
         // 1️⃣ Add a new review
         app.post("/reviews/:propertyId", async (req, res) => {
             try {
@@ -481,25 +387,11 @@ async function run() {
         });
 
 
-        // ✅ Delete a review
-        app.delete("/reviews/:id", async (req, res) => {
-            try {
-                const { id } = req.params;
-                const result = await reviewsCollection.deleteOne({ _id: new ObjectId(id) });
-
-                if (result.deletedCount === 0) {
-                    return res.status(404).send({ message: "Review not found" });
-                }
-
-                res.send({ message: "Review deleted successfully" });
-            } catch (err) {
-                res.status(500).send({ message: "Failed to delete review", error: err.message });
-            }
-        });
 
 
 
-        // 3️⃣ Delete a review
+
+        // // 3️⃣ Delete a review
         app.delete("/reviews/:reviewId", async (req, res) => {
             try {
                 const { reviewId } = req.params;
@@ -520,14 +412,20 @@ async function run() {
 
 
 
-        // offeers 
 
-        // Make an offer
+
+
+
+        // ===== POST /offers - submit a new offer =====
         app.post('/offers', async (req, res) => {
             try {
-                const { propertyId, title, location, agentName, offerAmount, buyerEmail, buyerName, buyingDate, minPrice, maxPrice, role } = req.body;
+                const {
+                    propertyId, title, location, agentName,
+                    offerAmount, buyerEmail, buyerName, buyingDate,
+                    minPrice, maxPrice
+                } = req.body;
 
-                // ✅ Validation
+                // Validation
                 if (!propertyId || !title || !location || !agentName || !offerAmount || !buyerEmail || !buyerName || !buyingDate) {
                     return res.status(400).json({ message: 'Missing required fields' });
                 }
@@ -545,7 +443,7 @@ async function run() {
                     title,
                     location,
                     agentName,
-                    agentEmail: property.agentEmail, // now defined
+                    agentEmail: property.agentEmail,
                     offerAmount,
                     buyerEmail,
                     buyerName,
@@ -554,34 +452,28 @@ async function run() {
                     createdAt: new Date(),
                 };
 
-                const result = await offersCollection.insertOne(newOffer);
-
+                await offersCollection.insertOne(newOffer);
                 res.json({ message: 'Offer submitted successfully', offer: newOffer });
+
             } catch (err) {
                 console.error("Offer error:", err);
                 res.status(500).json({ message: 'Server error' });
             }
         });
 
-
-
-
-
-
+        // ===== GET /offers - get offers by buyer =====
         app.get("/offers", verifyFBToken, async (req, res) => {
             try {
                 const buyerEmail = req.query.buyerEmail;
-                if (!buyerEmail) {
-                    return res.status(400).json({ message: "buyerEmail query parameter required" });
-                }
+                if (!buyerEmail) return res.status(400).json({ message: "buyerEmail query parameter required" });
 
                 const offers = await offersCollection.find({ buyerEmail }).sort({ createdAt: -1 }).toArray();
 
-                // fetch property images
+                // Fetch property images
                 const propertyIds = offers.map(o => new ObjectId(o.propertyId));
                 const properties = await propertiesCollection.find({ _id: { $in: propertyIds } }).toArray();
 
-                // merge offers with property images
+                // Merge offers with property images
                 const merged = offers.map(o => {
                     const prop = properties.find(p => p._id.toString() === o.propertyId);
                     return {
@@ -593,32 +485,17 @@ async function run() {
                 res.status(200).json(merged);
             } catch (error) {
                 console.error(error);
-                res.status(500).json({ message: "Failed to fetch bought properties" });
+                res.status(500).json({ message: "Failed to fetch offers" });
             }
         });
 
-
-        // PATCH /offers/:id/accept
-        app.patch("/offers/:id/accept", async (req, res) => {
-            const { id } = req.params;
-
-            const result = await offersCollection.updateOne(
-                { _id: new ObjectId(id) },
-                { $set: { status: "accepted" } }
-            );
-
-            res.send(result);
-        });
-
-
-        // Get all offers for properties added by an agent
+        // ===== GET /offers/agent/:email - get all offers for agent's properties =====
         app.get("/offers/agent/:email", verifyFBToken, async (req, res) => {
             try {
                 const agentEmail = req.params.email;
 
-                // find all offers where this agent is the property owner
                 const offers = await offersCollection
-                    .find({ agentEmail: agentEmail }) // ensure you store agentEmail in offers when creating
+                    .find({ agentEmail })
                     .sort({ createdAt: -1 })
                     .toArray();
 
@@ -629,97 +506,159 @@ async function run() {
             }
         });
 
-
-
-
-        // PATCH accept offer
+        // ===== PATCH /offers/:id/accept - accept an offer & reject others =====
         app.patch("/offers/:id/accept", async (req, res) => {
-            const { id } = req.params;
+            try {
+                const { id } = req.params;
 
-            // Find the offer being accepted
-            const offer = await offersCollection.findOne({ _id: new ObjectId(id) });
-            if (!offer) return res.status(404).send({ message: "Offer not found" });
+                const offer = await offersCollection.findOne({ _id: new ObjectId(id) });
+                if (!offer) return res.status(404).send({ message: "Offer not found" });
 
-            // 1️⃣ Accept selected offer
-            await offersCollection.updateOne(
-                { _id: new ObjectId(id) },
-                { $set: { status: "accepted" } }
-            );
+                // Accept selected offer
+                await offersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status: "accepted" } }
+                );
 
-            // 2️⃣ Reject all other offers for same property
-            await offersCollection.updateMany(
-                { propertyId: offer.propertyId, _id: { $ne: new ObjectId(id) } },
-                { $set: { status: "rejected" } }
-            );
+                // Reject all other offers for same property
+                await offersCollection.updateMany(
+                    { propertyId: offer.propertyId, _id: { $ne: new ObjectId(id) } },
+                    { $set: { status: "rejected" } }
+                );
 
-            res.send({ message: "Offer accepted and others rejected" });
+                res.send({ message: "Offer accepted and others rejected" });
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({ message: "Server error" });
+            }
         });
 
-        // PATCH reject offer
+        // ===== PATCH /offers/:id/reject - reject an offer =====
         app.patch("/offers/:id/reject", async (req, res) => {
-            const { id } = req.params;
+            try {
+                const { id } = req.params;
+                const result = await offersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status: "rejected" } }
+                );
 
-            const result = await offersCollection.updateOne(
-                { _id: new ObjectId(id) },
-                { $set: { status: "rejected" } }
-            );
+                if (result.modifiedCount === 0) return res.status(404).send({ message: "Offer not found" });
 
-            res.send(result);
+                res.send({ message: "Offer rejected" });
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({ message: "Server error" });
+            }
+        });
+
+
+
+        app.get("/offers/:id", async (req, res) => {
+            try {
+                const { id } = req.params;
+                const offer = await offersCollection.findOne({ _id: new ObjectId(id) });
+
+                if (!offer) return res.status(404).send({ message: "Offer not found" });
+                res.send(offer);
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({ message: "Server error" });
+            }
+        });
+
+        app.post("/create-payment-intent", async (req, res) => {
+            try {
+                const { amountInCents } = req.body;
+
+                if (!amountInCents || amountInCents < 50 || amountInCents > 99999999) {
+                    return res.status(400).send({ error: "Invalid amount" });
+                }
+
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: amountInCents,
+                    currency: "usd",
+                    payment_method_types: ["card"],
+                });
+
+                res.send({ clientSecret: paymentIntent.client_secret });
+            } catch (error) {
+                console.error("Stripe Error:", error.message);
+                res.status(500).send({ error: error.message });
+            }
         });
 
 
 
 
 
-        // Get single property by ID
+
+
+
+
+
+
+
+
+
+
+
         app.get("/properties/:id", async (req, res) => {
             try {
                 const { id } = req.params;
 
-                // validate ObjectId
-                if (!ObjectId.isValid(id)) {
-                    return res.status(400).json({ message: "Invalid property ID" });
+                let property;
+                if (ObjectId.isValid(id)) {
+                    property = await propertiesCollection.findOne({ _id: new ObjectId(id) });
                 }
 
-                const property = await propertiesCollection.findOne({ _id: new ObjectId(id) });
+                // fallback: try plain string _id
+                if (!property) {
+                    property = await propertiesCollection.findOne({ _id: id });
+                }
 
                 if (!property) {
                     return res.status(404).json({ message: "Property not found" });
                 }
 
-                res.json(property); // ✅ return property object
+                res.json(property);
             } catch (err) {
                 console.error("Error fetching property:", err);
                 res.status(500).json({ message: "Server error" });
             }
         });
-
-
         // Add a review for a property
-        app.post('/properties/:id/reviews', async (req, res) => {
+        app.post("/properties/:id/reviews", async (req, res) => {
             try {
                 const { id } = req.params;
                 const { userId, name, text } = req.body;
 
-                if (!userId || !name || !text) return res.status(400).json({ message: 'Missing fields' });
+                if (!userId || !name || !text) {
+                    return res.status(400).json({ message: "Missing fields" });
+                }
 
                 const newReview = { userId, name, text };
                 const result = await propertiesCollection.findOneAndUpdate(
                     { _id: new ObjectId(id) },
                     { $push: { reviews: newReview } },
-                    { returnDocument: 'after' }
+                    { returnDocument: "after" }
                 );
 
-                if (!result.value) return res.status(404).json({ message: 'Property not found' });
+                if (!result.value) {
+                    return res.status(404).json({ message: "Property not found" });
+                }
 
                 res.json(newReview);
             } catch (err) {
-                console.error(err);
-                res.status(500).json({ message: 'Server error' });
+                console.error("Error adding review:", err);
+                res.status(500).json({ message: "Server error" });
             }
         });
 
-    
+
+
+
+
+
 
 
 
