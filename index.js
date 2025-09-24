@@ -44,6 +44,7 @@ async function run() {
         const wishlistCollection = db.collection('wishlist');
         const offersCollection = db.collection('offers');
         const reviewsCollection = db.collection('reviews');
+        const paymentsCollection = db.collection('payments');
 
 
 
@@ -566,16 +567,39 @@ async function run() {
             }
         });
 
+        // app.post("/create-payment-intent", async (req, res) => {
+        //     try {
+        //         const { amountInCents } = req.body;
+
+        //         if (!amountInCents || amountInCents < 50 || amountInCents > 99999999) {
+        //             return res.status(400).send({ error: "Invalid amount" });
+        //         }
+
+        //         const paymentIntent = await stripe.paymentIntents.create({
+        //             amount: amountInCents,
+        //             currency: "usd",
+        //             payment_method_types: ["card"],
+        //         });
+
+        //         res.send({ clientSecret: paymentIntent.client_secret });
+        //     } catch (error) {
+        //         console.error("Stripe Error:", error.message);
+        //         res.status(500).send({ error: error.message });
+        //     }
+        // });
+
+
+        // ✅ Create Payment Intent
         app.post("/create-payment-intent", async (req, res) => {
             try {
-                const { amountInCents } = req.body;
+                const { amount } = req.body;
 
-                if (!amountInCents || amountInCents < 50 || amountInCents > 99999999) {
-                    return res.status(400).send({ error: "Invalid amount" });
+                if (!amount || amount < 50) {
+                    return res.status(400).send({ error: "Invalid payment amount" });
                 }
 
                 const paymentIntent = await stripe.paymentIntents.create({
-                    amount: amountInCents,
+                    amount,
                     currency: "usd",
                     payment_method_types: ["card"],
                 });
@@ -588,10 +612,108 @@ async function run() {
         });
 
 
+        // ✅ Update Project Status
+        app.patch("/project-status/:id", async (req, res) => {
+            try {
+                const { id } = req.params;
+                const { transactionId } = req.body;
+
+                if (!transactionId) {
+                    return res.status(400).send({ error: "Transaction ID is required" });
+                }
+
+                const result = await offersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            status: "bought",
+                            transactionId,
+                        },
+                    }
+                );
+
+                if (result.modifiedCount > 0) {
+                    res.send({ success: true, message: "Project marked as bought" });
+                } else {
+                    res.status(404).send({ error: "Offer not found or already updated" });
+                }
+            } catch (error) {
+                console.error("Error updating project status:", error.message);
+                res.status(500).send({ error: "Failed to update project status" });
+            }
+        });
 
 
 
 
+        // ✅ Store Payment Info
+        app.post("/payments", async (req, res) => {
+            try {
+                const { offerId, propertyId, email, amount, transactionId, paymentMethod } = req.body;
+
+                console.log("Received payment:", req.body); // DEBUG LOG
+
+                if (!offerId || !propertyId || !email || !amount || !transactionId || !paymentMethod) {
+                    return res.status(400).send({ error: "Missing required payment fields" });
+                }
+
+                // Ensure amount is a number
+                const safeAmount = Number(amount);
+                if (isNaN(safeAmount) || safeAmount <= 0) {
+                    return res.status(400).send({ error: "Invalid amount" });
+                }
+
+                const paymentData = {
+                    offerId,
+                    propertyId,
+                    email,
+                    amount: safeAmount,
+                    transactionId,
+                    paymentMethod,
+                    status: "paid",
+                    date: new Date(),
+                };
+
+                const result = await paymentsCollection.insertOne(paymentData);
+                console.log("Inserted payment:", result); // DEBUG LOG
+
+                res.send({ insertedId: result.insertedId });
+            } catch (error) {
+                console.error("Error saving payment:", error); // Full error
+                res.status(500).send({ error: "Failed to save payment" });
+            }
+        });
+
+
+
+
+        // GET sold properties by agent
+    app.get('/payments/agent/:email', async (req, res) => {
+    try {
+        const { email } = req.params;
+        if (!email) return res.status(400).send({ error: 'Agent email is required' });
+
+        // Fetch all payments
+        const payments = await paymentsCollection.find({ status: 'paid' }).toArray();
+
+        // Fetch all properties owned by this agent
+        const properties = await propertiesCollection.find({ agentEmail: email }).toArray();
+        const propertyIds = properties.map(p => p._id.toString());
+
+        // Filter payments where propertyId matches the agent's properties
+        const soldPayments = payments.filter(p => propertyIds.includes(p.propertyId));
+
+        res.send(soldPayments);
+    } catch (error) {
+        console.error('Error fetching sold properties:', error);
+        res.status(500).send({ error: 'Failed to fetch sold properties' });
+    }
+});
+
+
+
+
+        // Store Payment Data
 
 
 
