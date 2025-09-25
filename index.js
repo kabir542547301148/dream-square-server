@@ -18,7 +18,35 @@ app.use(cors());
 app.use(express.json());
 
 // Firebase Admin
-const serviceAccount = require("./firebase-admin-key.json");
+
+const decodedKey = Buffer.from(`ewogICJ0eXBlIjogInNlcnZpY2VfYWNjb3VudCIsCiAgInByb2plY3RfaWQiOiAiZHJlYW0tc3F1YXJlLWI3NTI0IiwKICAicHJpdmF0ZV9rZXlfaWQiOiAiMmFjZTE1ZDI0MGJjY2I1YjIxMmNiOTM1ZDNjOGV
+hMWZjZGVlOTI2NyIsCiAgInByaXZhdGVfa2V5IjogIi0tLS0tQkVHSU4gUFJJVkFURSBLRVktLS0tLVxuTUlJRXZRSUJBREFOQmdrcWhraUc5dzBCQVFFRkFBU0NCS2N3Z2dTakFnRUFBb0lCQVFDNWVWVlpDWD
+dWdzhVT1xuUzJScWZkdERlL1A5UmozRXRmNmllREhQcWdCN1pmZEE4eEJjTDE2SnpwNnNrTzh0U0lvTlRuazhlMEtSZ0xNZlxud1h2RXJaemJRZmtkVmh3VWk3dmh5Q0gvSW9JamZNK3FoVTBCTkpTM3daSzZlQ
+TJVZFUzV0dzeG1RQzhSU0tQUlxubWN2USs4Z0t0VTNuNHVRT281b0p4OUlvQUNrN01sK254aWpNTVV2b2pIYzRaY1lPekFYNE4yeHBFTEtnNmhYRVxuQWZnazRmNVVXSXByLzB3YTEwOG9BSy9FWGxFQlAzaUdq
+WXpXT3RlTVB6ZHNNQ2dTVzZjR09yUkpiYkN6RFRpVlxuT2FQcmU3U1ZFdnFNckt1ZWJXSFp0eHBvdFdaQi9aZmdRTW93Uzk3emJ5M2J5aWN1eWo5L2Z5QkliaFVwNlllK1xuVy80MmZFeVRBZ01CQUFFQ2dnRUF
+DWmViMThoazczdEdyZW1UM29PcHpscEdLclR5UnR1TGhmcFkrcjZwRGJpNFxuZlhyVXBmbDNsbWZCenhBajJCL21lK0xrZmR0R0ZrZnlTRzJQRUIwZ0YyNEwxLzMzRmphSmNURGZpVHliMlRUTlxuRXhETEJDTW
+tvRUhnYThqTWY4d1FmWG9GdXY1ei9ZTnhvTERhaTlmRFRjSjRybU9vTmNqUEU2SUVLamc4dG5VblxudGZsSENNMDRBcVNVdVYzTmt0YXpmTXBYbU56ajZ6L1VrbXg1Z29LUXFIZmY3ZnJzWlp3TngvWW1OZ3hjM
+EZXMFxuRENFMDB0US9UczJMVjBHVDZVc1VYNExGMDRJUUhJcURTQVpLaVZQLzVvQ1NHQTVpWVRjam5Fb1JCbGs1N2FwTFxuMXl1TTE0OEZqeE5SRU55dlZGM2lpZUEyZHg1bGZHUFFMY3RGaHNESTJRS0JnUURs
+ekVwYmhtWW5ZQ3U1M2ZGUVxuUlZhRjVsb0lyUjVOMTF5RkhCd2hGenprSXZuOFByOUdEZGlFZ2w5Nml5SkJ4WnRKeW5zVlY1anFtS2k3a0F6cFxuRE8zVlFKT040azNDMFRjQ2gzM3BDYWVSd2FNbkpVaDhkUkV
+qeUNOUUc0WXY2dnVyVTF1eFB2ckltV3k3bmFaNFxuVjVBWUJNWVZtTnBQTGYzb0hVc256RFROelFLQmdRRE9uejM1QTIzZ3U1S1B2TWpyL05RZFBXMlRsdDdOZmJIa1xucCtFU1ZJQktwbTRoTnEveDh5a0xKZW
+9ZbFR0TXJTOEZ2QlZMaklKdlBId3NidFpmNXNQQWdibkh4ZlAwVlFSK1xuZGdiVEVMVUg0bWJETlZNTktIMkUwcGhNWE1FNFl5cDV0YzFzOEQxS0tGWHBNRGNudHVKaGdSSXJ6WjVGaWhyY1xuczZ3bHc4SWozd
+0tCZ0hCR1EvNDd5Q1ZzNDNCSWMrS1lQaEhsM2c5bkplczZVY1huV2djQTU0cy9XNHhXeS9WYVxuUm5OWGozYThDOXkrdzRSbUhZVHI2NWFUUjcxOFFCS05jcFpDbXRVendISnk3Y0dhbVhZR2RZek5ZdjE1UmRV
+cFxuRFZyQ0toNjFrL1pOaFBETUpYeVFITTl0eHFaVC9FWEg0bXNaeWY0N1ZFNWpWaTdXUVNZTXE2L3hBb0dBUXNOQlxuaXd5SW5Hei9WbUp4cVk3d0d1S1dYWElLVyt1Wlo0QzNRT3o4NXlJUHc3dWY3bFhibFR
+hVEJZNXlzcnZpemIrUVxuUWZFTTFGUis2dnlGV0VlQVNOdWg0K01haUlCUUMyeW5sOXQySXk0TWRsYnNsdnZXVXV5Wk9WTmZPNUVQVUhSbVxuQkNVOEtKSVA4R0ViOFVFdXRNSzMxRitFSElRYldlVFVZdjkxND
+VFQ2dZRUFvRFJKZW05WFhaSHFPM1VRbDlMa1xubkdoRC9rYzhITXFMN1hxSHFrQ0ZGZHNkTUFNZVR6Vm80dTlObDY3elJKNndLSDFiZGRwVitid2gwd3U5YXV3S1xuZVhkTE9HbHpCbzdEdUlrbGc2b1B5aC8ve
+nM2TFlvM3RzZFRQRWpwLytvK0FqcWJHeDRTL0VmSVZoL280bmFzVFxucDlka3kxNVUvSTloVlZkSnZkYk9meEU9XG4tLS0tLUVORCBQUklWQVRFIEtFWS0tLS0tXG4iLAogICJjbGllbnRfZW1haWwiOiAiZmly
+ZWJhc2UtYWRtaW5zZGstZmJzdmNAZHJlYW0tc3F1YXJlLWI3NTI0LmlhbS5nc2VydmljZWFjY291bnQuY29tIiwKICAiY2xpZW50X2lkIjogIjExMDMwOTgyMDc0NzA4NjIwNDI3NCIsCiAgImF1dGhfdXJpIjo
+gImh0dHBzOi8vYWNjb3VudHMuZ29vZ2xlLmNvbS9vL29hdXRoMi9hdXRoIiwKICAidG9rZW5fdXJpIjogImh0dHBzOi8vb2F1dGgyLmdvb2dsZWFwaXMuY29tL3Rva2VuIiwKICAiYXV0aF9wcm92aWRlcl94NT
+A5X2NlcnRfdXJsIjogImh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL29hdXRoMi92MS9jZXJ0cyIsCiAgImNsaWVudF94NTA5X2NlcnRfdXJsIjogImh0dHBzOi8vd3d3Lmdvb2dsZWFwaXMuY29tL3JvYm90L
+3YxL21ldGFkYXRhL3g1MDkvZmlyZWJhc2UtYWRtaW5zZGstZmJzdmMlNDBkcmVhbS1zcXVhcmUtYjc1MjQuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLAogICJ1bml2ZXJzZV9kb21haW4iOiAiZ29vZ2xlYXBp
+cy5jb20iCn0K`, 'base64').toString('utf8');
+console.log("🚀 ~ decodedKey:", decodedKey);
+
+const serviceAccount = JSON.parse(decodedKey);
+
+
+
+// const serviceAccount = require("./firebase-admin-key.json");
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
 });
@@ -331,7 +359,7 @@ async function run() {
 
 
         // Get all reviews
-        app.get("/reviews",  verifyFBToken, async (req, res) => {
+        app.get("/reviews",   async (req, res) => {
             try {
                 const allReviews = await reviewsCollection.find().toArray();
                 res.json(allReviews);
@@ -343,7 +371,7 @@ async function run() {
 
 
         // 2️⃣ Get all reviews of a user
-        app.get("/reviews/:userEmail", verifyFBToken, async (req, res) => {
+        app.get("/reviews/:userEmail",  async (req, res) => {
             try {
                 const { userEmail } = req.params;
 
@@ -446,7 +474,7 @@ async function run() {
         });
 
         // ===== GET /offers - get offers by buyer =====
-        app.get("/offers", verifyFBToken, async (req, res) => {
+        app.get("/offers", async (req, res) => {
             try {
                 const buyerEmail = req.query.buyerEmail;
                 if (!buyerEmail) return res.status(400).json({ message: "buyerEmail query parameter required" });
@@ -474,7 +502,7 @@ async function run() {
         });
 
         // ===== GET /offers/agent/:email - get all offers for agent's properties =====
-        app.get("/offers/agent/:email", verifyFBToken, async (req, res) => {
+        app.get("/offers/agent/:email",  async (req, res) => {
             try {
                 const agentEmail = req.params.email;
 
@@ -537,7 +565,7 @@ async function run() {
 
 
 
-        app.get("/offers/:id", verifyFBToken, async (req, res) => {
+        app.get("/offers/:id",  async (req, res) => {
             try {
                 const { id } = req.params;
                 const offer = await offersCollection.findOne({ _id: new ObjectId(id) });
@@ -650,7 +678,7 @@ async function run() {
 
 
         // GET sold properties by agent
-    app.get('/payments/agent/:email', verifyFBToken, async (req, res) => {
+    app.get('/payments/agent/:email',  async (req, res) => {
     try {
         const { email } = req.params;
         if (!email) return res.status(400).send({ error: 'Agent email is required' });
@@ -732,7 +760,7 @@ async function run() {
         });
 
 
-        app.get("/advertised-properties", verifyFBToken,  async (req, res) => {
+        app.get("/advertised-properties",   async (req, res) => {
             try {
                 const verifiedProperties = await propertiesCollection
                     .find({ status: "verified" })
