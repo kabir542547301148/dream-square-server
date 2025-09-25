@@ -37,7 +37,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        await client.connect();
+        // await client.connect();
         const db = client.db("realEstateDb");
         const propertiesCollection = db.collection('properties');
         const usersCollection = db.collection('users');
@@ -66,7 +66,7 @@ async function run() {
         };
 
         // ============ USER ROUTES ============
-        app.post('/users', async (req, res) => {
+        app.post('/users', verifyFBToken, async (req, res) => {
             const email = req.body.email;
             const userExists = await usersCollection.findOne({ email });
             if (userExists) return res.status(200).send({ message: 'user already exists', inserted: false });
@@ -74,7 +74,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/users/role/:email", async (req, res) => {
+        app.get("/users/role/:email", verifyFBToken, async (req, res) => {
             const email = req.params.email;
             const user = await usersCollection.findOne({ email });
             if (!user) return res.status(404).send({ message: "User not found" });
@@ -82,26 +82,26 @@ async function run() {
         });
 
 
-        app.get("/users", verifyFBToken, async (req, res) => {
+        app.get("/users", verifyFBToken, verifyFBToken, async (req, res) => {
             const users = await usersCollection.find().toArray();
             res.send(users);
         });
 
 
-        app.patch("/users/admin/:id", async (req, res) => {
+        app.patch("/users/admin/:id", verifyFBToken, async (req, res) => {
             const id = req.params.id;
             const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { role: "admin" } });
             res.send(result);
         });
 
 
-        app.patch("/users/agent/:id", async (req, res) => {
+        app.patch("/users/agent/:id", verifyFBToken, async (req, res) => {
             const id = req.params.id;
             const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { role: "agent" } });
             res.send(result);
         });
 
-        app.patch("/users/fraud/:id", async (req, res) => {
+        app.patch("/users/fraud/:id", verifyFBToken, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const result = await usersCollection.updateOne(filter, { $set: { role: "fraud" } });
@@ -112,7 +112,7 @@ async function run() {
             res.send(result);
         });
 
-        app.delete("/users/:id", async (req, res) => {
+        app.delete("/users/:id", verifyFBToken, async (req, res) => {
             const id = req.params.id;
             const { email } = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -147,10 +147,7 @@ async function run() {
 
 
 
-
-
-
-        app.get("/properties", async (req, res) => {
+        app.get("/properties", verifyFBToken, async (req, res) => {
             try {
                 const { email } = req.query;
                 let query = {};
@@ -174,7 +171,7 @@ async function run() {
         });
 
         // ✅ Admin: Get ALL properties (any status)
-        app.get("/admin/properties", async (req, res) => {
+        app.get("/admin/properties", verifyFBToken, async (req, res) => {
             try {
                 const properties = await propertiesCollection.find().sort({ createdAt: -1 }).toArray();
                 res.send(properties);
@@ -188,7 +185,7 @@ async function run() {
 
 
         // Update property status
-        app.patch("/properties/:id/status", async (req, res) => {
+        app.patch("/properties/:id/status", verifyFBToken, async (req, res) => {
             const { id } = req.params;
             const { status } = req.body;
             if (!["verified", "rejected"].includes(status)) return res.status(400).send({ message: "Invalid status" });
@@ -198,14 +195,14 @@ async function run() {
         });
 
         // Delete property
-        app.delete("/properties/:id", async (req, res) => {
+        app.delete("/properties/:id", verifyFBToken, async (req, res) => {
             const id = req.params.id;
             const result = await propertiesCollection.deleteOne({ _id: new ObjectId(id) });
             res.send(result);
         });
 
         // Update entire property
-        app.put("/properties/:id", async (req, res) => {
+        app.put("/properties/:id", verifyFBToken, async (req, res) => {
             try {
                 const id = req.params.id;
                 const updatedData = req.body;
@@ -226,7 +223,7 @@ async function run() {
 
 
         // Get property details with reviews
-        app.get('/properties/:id', async (req, res) => {
+        app.get('/properties/:id', verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
                 const property = await propertiesCollection.findOne({ _id: new ObjectId(id) });
@@ -241,7 +238,7 @@ async function run() {
 
 
 
-        app.post('/wishlist', async (req, res) => {
+        app.post('/wishlist', verifyFBToken, async (req, res) => {
             try {
                 const { userEmail, propertyId } = req.body;
                 if (!userEmail || !propertyId) return res.status(400).json({ message: 'Missing userEmail or propertyId' });
@@ -259,12 +256,8 @@ async function run() {
         });
 
 
-
-
-
-
         // ✅ Get all wishlist properties for a specific user
-        app.get('/wishlist/:email', async (req, res) => {
+        app.get('/wishlist/:email', verifyFBToken, async (req, res) => {
             try {
                 const { email } = req.params;
                 if (!email) return res.status(400).json({ message: 'Missing user email' });
@@ -290,7 +283,7 @@ async function run() {
         });
 
         // ✅ Remove property from wishlist
-        app.delete('/wishlist/:email/:propertyId', async (req, res) => {
+        app.delete('/wishlist/:email/:propertyId', verifyFBToken, async (req, res) => {
             try {
                 const { email, propertyId } = req.params;
                 const result = await wishlistCollection.deleteOne({ userEmail: email, propertyId });
@@ -308,7 +301,7 @@ async function run() {
 
 
         // 1️⃣ Add a new review
-        app.post("/reviews/:propertyId", async (req, res) => {
+        app.post("/reviews/:propertyId", verifyFBToken, async (req, res) => {
             try {
                 const { propertyId } = req.params;
                 const { userId, name, text } = req.body;
@@ -338,7 +331,7 @@ async function run() {
 
 
         // Get all reviews
-        app.get("/reviews", async (req, res) => {
+        app.get("/reviews",  verifyFBToken, async (req, res) => {
             try {
                 const allReviews = await reviewsCollection.find().toArray();
                 res.json(allReviews);
@@ -350,7 +343,7 @@ async function run() {
 
 
         // 2️⃣ Get all reviews of a user
-        app.get("/reviews/:userEmail", async (req, res) => {
+        app.get("/reviews/:userEmail", verifyFBToken, async (req, res) => {
             try {
                 const { userEmail } = req.params;
 
@@ -367,7 +360,7 @@ async function run() {
 
 
         // ✅ Update review status (approve/reject)
-        app.patch("/reviews/:id/status", async (req, res) => {
+        app.patch("/reviews/:id/status", verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
                 const { status } = req.body; // "approved" or "rejected"
@@ -388,12 +381,8 @@ async function run() {
         });
 
 
-
-
-
-
         // // 3️⃣ Delete a review
-        app.delete("/reviews/:reviewId", async (req, res) => {
+        app.delete("/reviews/:reviewId", verifyFBToken, async (req, res) => {
             try {
                 const { reviewId } = req.params;
 
@@ -411,14 +400,8 @@ async function run() {
         });
 
 
-
-
-
-
-
-
         // ===== POST /offers - submit a new offer =====
-        app.post('/offers', async (req, res) => {
+        app.post('/offers', verifyFBToken, async (req, res) => {
             try {
                 const {
                     propertyId, title, location, agentName,
@@ -508,7 +491,7 @@ async function run() {
         });
 
         // ===== PATCH /offers/:id/accept - accept an offer & reject others =====
-        app.patch("/offers/:id/accept", async (req, res) => {
+        app.patch("/offers/:id/accept", verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
 
@@ -535,7 +518,7 @@ async function run() {
         });
 
         // ===== PATCH /offers/:id/reject - reject an offer =====
-        app.patch("/offers/:id/reject", async (req, res) => {
+        app.patch("/offers/:id/reject", verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
                 const result = await offersCollection.updateOne(
@@ -554,7 +537,7 @@ async function run() {
 
 
 
-        app.get("/offers/:id", async (req, res) => {
+        app.get("/offers/:id", verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
                 const offer = await offersCollection.findOne({ _id: new ObjectId(id) });
@@ -566,27 +549,6 @@ async function run() {
                 res.status(500).send({ message: "Server error" });
             }
         });
-
-        // app.post("/create-payment-intent", async (req, res) => {
-        //     try {
-        //         const { amountInCents } = req.body;
-
-        //         if (!amountInCents || amountInCents < 50 || amountInCents > 99999999) {
-        //             return res.status(400).send({ error: "Invalid amount" });
-        //         }
-
-        //         const paymentIntent = await stripe.paymentIntents.create({
-        //             amount: amountInCents,
-        //             currency: "usd",
-        //             payment_method_types: ["card"],
-        //         });
-
-        //         res.send({ clientSecret: paymentIntent.client_secret });
-        //     } catch (error) {
-        //         console.error("Stripe Error:", error.message);
-        //         res.status(500).send({ error: error.message });
-        //     }
-        // });
 
 
         // ✅ Create Payment Intent
@@ -613,7 +575,7 @@ async function run() {
 
 
         // ✅ Update Project Status
-        app.patch("/project-status/:id", async (req, res) => {
+        app.patch("/project-status/:id", verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
                 const { transactionId } = req.body;
@@ -647,7 +609,7 @@ async function run() {
 
 
         // ✅ Store Payment Info
-        app.post("/payments", async (req, res) => {
+        app.post("/payments", verifyFBToken, async (req, res) => {
             try {
                 const { offerId, propertyId, email, amount, transactionId, paymentMethod } = req.body;
 
@@ -688,7 +650,7 @@ async function run() {
 
 
         // GET sold properties by agent
-    app.get('/payments/agent/:email', async (req, res) => {
+    app.get('/payments/agent/:email', verifyFBToken, async (req, res) => {
     try {
         const { email } = req.params;
         if (!email) return res.status(400).send({ error: 'Agent email is required' });
@@ -708,23 +670,8 @@ async function run() {
         console.error('Error fetching sold properties:', error);
         res.status(500).send({ error: 'Failed to fetch sold properties' });
     }
-});
-
-
-
-
-        // Store Payment Data
-
-
-
-
-
-
-
-
-
-
-        app.get("/properties/:id", async (req, res) => {
+    })
+        app.get("/properties/:id", verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
 
@@ -749,7 +696,7 @@ async function run() {
             }
         });
         // Add a review for a property
-        app.post("/properties/:id/reviews", async (req, res) => {
+        app.post("/properties/:id/reviews", verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
                 const { userId, name, text } = req.body;
@@ -776,23 +723,6 @@ async function run() {
             }
         });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         // Single property by ID
         app.get("/properties/:id", async (req, res) => {
             const id = req.params.id;
@@ -802,13 +732,7 @@ async function run() {
         });
 
 
-        // ✅ Get property by ID
-
-
-        // advertised properties
-
-
-        app.get("/advertised-properties", async (req, res) => {
+        app.get("/advertised-properties", verifyFBToken,  async (req, res) => {
             try {
                 const verifiedProperties = await propertiesCollection
                     .find({ status: "verified" })
@@ -822,8 +746,8 @@ async function run() {
 
 
         // Ping MongoDB
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. Successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. Successfully connected to MongoDB!");
     } catch (err) {
         console.error("MongoDB connection error:", err);
     }
@@ -840,6 +764,7 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
     console.log(`🚀 DreamSquare server running on port ${port}`);
 });
+
 
 
 
