@@ -94,7 +94,7 @@ async function run() {
         };
 
         // ============ USER ROUTES ============
-        app.post('/users', verifyFBToken, async (req, res) => {
+        app.post('/users', async (req, res) => {
             const email = req.body.email;
             const userExists = await usersCollection.findOne({ email });
             if (userExists) return res.status(200).send({ message: 'user already exists', inserted: false });
@@ -102,7 +102,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get("/users/role/:email", verifyFBToken, async (req, res) => {
+        app.get("/users/role/:email", async (req, res) => {
             const email = req.params.email;
             const user = await usersCollection.findOne({ email });
             if (!user) return res.status(404).send({ message: "User not found" });
@@ -110,26 +110,26 @@ async function run() {
         });
 
 
-        app.get("/users", verifyFBToken, verifyFBToken, async (req, res) => {
+        app.get("/users", async (req, res) => {
             const users = await usersCollection.find().toArray();
             res.send(users);
         });
 
 
-        app.patch("/users/admin/:id", verifyFBToken, async (req, res) => {
+        app.patch("/users/admin/:id", async (req, res) => {
             const id = req.params.id;
             const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { role: "admin" } });
             res.send(result);
         });
 
 
-        app.patch("/users/agent/:id", verifyFBToken, async (req, res) => {
+        app.patch("/users/agent/:id", async (req, res) => {
             const id = req.params.id;
             const result = await usersCollection.updateOne({ _id: new ObjectId(id) }, { $set: { role: "agent" } });
             res.send(result);
         });
 
-        app.patch("/users/fraud/:id", verifyFBToken, async (req, res) => {
+        app.patch("/users/fraud/:id", async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const result = await usersCollection.updateOne(filter, { $set: { role: "fraud" } });
@@ -140,7 +140,7 @@ async function run() {
             res.send(result);
         });
 
-        app.delete("/users/:id", verifyFBToken, async (req, res) => {
+        app.delete("/users/:id", async (req, res) => {
             const id = req.params.id;
             const { email } = req.body;
             const filter = { _id: new ObjectId(id) };
@@ -175,7 +175,7 @@ async function run() {
 
 
 
-        app.get("/properties", verifyFBToken, async (req, res) => {
+        app.get("/properties", async (req, res) => {
             try {
                 const { email } = req.query;
                 let query = {};
@@ -359,7 +359,7 @@ async function run() {
 
 
         // Get all reviews
-        app.get("/reviews",   async (req, res) => {
+        app.get("/reviews", async (req, res) => {
             try {
                 const allReviews = await reviewsCollection.find().toArray();
                 res.json(allReviews);
@@ -371,7 +371,7 @@ async function run() {
 
 
         // 2️⃣ Get all reviews of a user
-        app.get("/reviews/:userEmail",  async (req, res) => {
+        app.get("/reviews/:userEmail", async (req, res) => {
             try {
                 const { userEmail } = req.params;
 
@@ -502,7 +502,7 @@ async function run() {
         });
 
         // ===== GET /offers/agent/:email - get all offers for agent's properties =====
-        app.get("/offers/agent/:email",  async (req, res) => {
+        app.get("/offers/agent/:email", async (req, res) => {
             try {
                 const agentEmail = req.params.email;
 
@@ -565,7 +565,7 @@ async function run() {
 
 
 
-        app.get("/offers/:id",  async (req, res) => {
+        app.get("/offers/:id", async (req, res) => {
             try {
                 const { id } = req.params;
                 const offer = await offersCollection.findOne({ _id: new ObjectId(id) });
@@ -580,6 +580,34 @@ async function run() {
 
 
         // ✅ Create Payment Intent
+        // app.post("/create-payment-intent", async (req, res) => {
+        //     try {
+        //         const { amount } = req.body;
+
+        //         if (!amount || amount < 50) {
+        //             return res.status(400).send({ error: "Invalid payment amount" });
+        //         }
+
+        //         const paymentIntent = await stripe.paymentIntents.create({
+        //             amount,
+        //             currency: "usd",
+        //             payment_method_types: ["card"],
+        //         });
+
+        //         res.send({ clientSecret: paymentIntent.client_secret });
+        //     } catch (error) {
+        //         console.error("Stripe Error:", error.message);
+        //         res.status(500).send({ error: error.message });
+        //     }
+        // });
+
+
+
+    
+
+        // ✅ Use secret key from environment
+      
+
         app.post("/create-payment-intent", async (req, res) => {
             try {
                 const { amount } = req.body;
@@ -600,6 +628,7 @@ async function run() {
                 res.status(500).send({ error: error.message });
             }
         });
+
 
 
         // ✅ Update Project Status
@@ -678,27 +707,27 @@ async function run() {
 
 
         // GET sold properties by agent
-    app.get('/payments/agent/:email',  async (req, res) => {
-    try {
-        const { email } = req.params;
-        if (!email) return res.status(400).send({ error: 'Agent email is required' });
+        app.get('/payments/agent/:email', async (req, res) => {
+            try {
+                const { email } = req.params;
+                if (!email) return res.status(400).send({ error: 'Agent email is required' });
 
-        // Fetch all payments
-        const payments = await paymentsCollection.find({ status: 'paid' }).toArray();
+                // Fetch all payments
+                const payments = await paymentsCollection.find({ status: 'paid' }).toArray();
 
-        // Fetch all properties owned by this agent
-        const properties = await propertiesCollection.find({ agentEmail: email }).toArray();
-        const propertyIds = properties.map(p => p._id.toString());
+                // Fetch all properties owned by this agent
+                const properties = await propertiesCollection.find({ agentEmail: email }).toArray();
+                const propertyIds = properties.map(p => p._id.toString());
 
-        // Filter payments where propertyId matches the agent's properties
-        const soldPayments = payments.filter(p => propertyIds.includes(p.propertyId));
+                // Filter payments where propertyId matches the agent's properties
+                const soldPayments = payments.filter(p => propertyIds.includes(p.propertyId));
 
-        res.send(soldPayments);
-    } catch (error) {
-        console.error('Error fetching sold properties:', error);
-        res.status(500).send({ error: 'Failed to fetch sold properties' });
-    }
-    })
+                res.send(soldPayments);
+            } catch (error) {
+                console.error('Error fetching sold properties:', error);
+                res.status(500).send({ error: 'Failed to fetch sold properties' });
+            }
+        })
         app.get("/properties/:id", verifyFBToken, async (req, res) => {
             try {
                 const { id } = req.params;
@@ -760,7 +789,7 @@ async function run() {
         });
 
 
-        app.get("/advertised-properties",   async (req, res) => {
+        app.get("/advertised-properties", async (req, res) => {
             try {
                 const verifiedProperties = await propertiesCollection
                     .find({ status: "verified" })
